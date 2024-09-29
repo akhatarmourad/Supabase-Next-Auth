@@ -10,28 +10,49 @@ export const signUpAction = async (formData: FormData) => {
   const password = formData.get("password")?.toString();
   const supabase = createClient();
   const origin = headers().get("origin");
-
+  
+  // Check if infos is filed
   if (!email || !password) {
     return { error: "Email and password are required" };
   }
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${origin}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    console.error(error.code + " " + error.message);
-    return encodedRedirect("error", "/sign-up", error.message);
-  } else {
+  // Check if email is pre-configured
+  const { data, error } = await supabase.from("Configured_Users").select().eq('email', email).single();
+  if(error) {
     return encodedRedirect(
-      "success",
+      "error",
       "/sign-up",
-      "Thanks for signing up! Please check your email for a verification link.",
+      "Not a Subscribed User",
     );
+  }
+  
+  if(!data || data?.status === false) {
+    return encodedRedirect(
+      "error",
+      "/sign-up",
+      "Not a Subscribed User or Account is inactive",
+    );
+  }
+  else {
+    // Sign up the user
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error(error.code + " " + error.message);
+      return encodedRedirect("error", "/sign-up", error.message);
+    } else {
+      return encodedRedirect(
+        "success",
+        "/sign-up",
+        "Thanks for signing up! Please check your email for a verification link.",
+      );
+    }
   }
 };
 
